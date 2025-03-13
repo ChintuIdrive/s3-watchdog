@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 const (
@@ -23,12 +24,14 @@ type APIserverClient struct {
 	apiserverConfig *dto.ApiServerConfig
 	login           dto.Login
 	token           dto.Token
+	tokenMutex      sync.RWMutex
 }
 
 func NewApiServerClient(config *conf.Config) *APIserverClient {
 	return &APIserverClient{
 		apiserverConfig: config.ApiServerConfig,
 		login:           config.Login,
+		tokenMutex:      sync.RWMutex{},
 	}
 }
 
@@ -36,11 +39,37 @@ func (asc *APIserverClient) Notify(payload []byte) {
 	log.Println("Notifying to API server")
 	log.Printf("Notification Payload: %s", string(payload))
 }
+
+func (asc *APIserverClient) getToken() dto.Token {
+	asc.tokenMutex.RLock()
+	defer asc.tokenMutex.RUnlock()
+	return asc.token
+}
+
+func (asc *APIserverClient) setToken(token dto.Token) {
+	asc.tokenMutex.Lock()
+	defer asc.tokenMutex.Unlock()
+	asc.token = token
+}
+
+func (asc *APIserverClient) getSessionToken() string {
+	asc.tokenMutex.RLock()
+	defer asc.tokenMutex.RUnlock()
+	return asc.token.ST
+}
+
+func (asc *APIserverClient) setSessionToken(st string) {
+	asc.tokenMutex.Lock()
+	defer asc.tokenMutex.Unlock()
+	asc.token.ST = st
+}
+
 func (asc *APIserverClient) RenewToken() error {
+	token := asc.getToken()
 	url := fmt.Sprintf("https://%s/%s", asc.apiserverConfig.APIServerDNS, renewToken)
 	method := "POST"
 	renewreq := dto.RenewReq{
-		RT: asc.token.RT,
+		RT: token.RT,
 	}
 	payload, err := json.Marshal(renewreq)
 	if err != nil {
@@ -50,14 +79,12 @@ func (asc *APIserverClient) RenewToken() error {
 
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, strings.NewReader(string(payload)))
-
 	if err != nil {
 		return err
 	}
 	req.Header.Add("Content-Type", "application/json")
 
 	res, err := client.Do(req)
-
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -74,11 +101,12 @@ func (asc *APIserverClient) RenewToken() error {
 	if err != nil {
 		log.Println(err)
 		return err
-	} else {
-		asc.token.ST = renewResp.ST
 	}
+
+	asc.setSessionToken(renewResp.ST)
 	return nil
 }
+
 func (asc *APIserverClient) Login() error {
 	url := fmt.Sprintf("https://%s/%s", asc.apiserverConfig.APIServerDNS, login)
 	method := "POST"
@@ -87,9 +115,9 @@ func (asc *APIserverClient) Login() error {
 		log.Println(err)
 		return err
 	}
+
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, strings.NewReader(string(payload)))
-
 	if err != nil {
 		return err
 	}
@@ -100,7 +128,6 @@ func (asc *APIserverClient) Login() error {
 		fmt.Println(err)
 		return err
 	}
-
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
@@ -109,20 +136,18 @@ func (asc *APIserverClient) Login() error {
 		return err
 	}
 	var loginResp dto.LoginResponse
-
 	err = json.Unmarshal(body, &loginResp)
 	if err != nil {
 		log.Println(err)
 		return err
-	} else {
-		asc.token = dto.Token{
-			ST:   loginResp.ST,
-			RT:   loginResp.RT,
-			User: loginResp.User,
-		}
 	}
-	return nil
 
+	asc.setToken(dto.Token{
+		ST:   loginResp.ST,
+		RT:   loginResp.RT,
+		User: loginResp.User,
+	})
+	return nil
 }
 
 func (asc *APIserverClient) GetTenatsListFromApiServer() ([]dto.Tenant, error) {
@@ -134,7 +159,7 @@ func (asc *APIserverClient) GetTenatsListFromApiServer() ([]dto.Tenant, error) {
 
 	payload := []byte(fmt.Sprintf(`{"NodeId":"%s"}`, asc.apiserverConfig.NodeId))
 
-	res, err := asc.FireRequest(method, asc.token.ST, url, payload)
+	res, err := asc.FireRequest(method, url, payload)
 	if err != nil {
 		return tenatList, err
 	}
@@ -170,7 +195,7 @@ func (asc *APIserverClient) GetCredential(user dto.User) (dto.Cred, error) {
 	if err != nil {
 		return cred, err
 	}
-	res, err := asc.FireRequest(method, url, asc.token.ST, payload)
+	res, err := asc.FireRequest(method, url, payload)
 	if err != nil {
 		return cred, err
 	}
@@ -199,7 +224,7 @@ func (asc *APIserverClient) GetNodeDetails(node string) ([]dto.User, error) {
 	method := "POST"
 	payload := []byte(fmt.Sprintf(`{"sn_id":"%s"}`, node))
 
-	res, err := asc.FireRequest(method, url, asc.token.ST, payload)
+	res, err := asc.FireRequest(method, url, payload)
 	if err != nil {
 		return users, err
 	}
@@ -225,7 +250,7 @@ func (asc *APIserverClient) GetRegions() ([]dto.Region, error) {
 	var regions []dto.Region
 	url := fmt.Sprintf("https://%s/%s", asc.apiserverConfig.APIServerDNS, get_datacenters)
 	method := "POST"
-	res, err := asc.FireRequest(method, url, asc.token.ST, []byte{})
+	res, err := asc.FireRequest(method, url, []byte{})
 	if err != nil {
 		return regions, err
 	}
@@ -247,22 +272,26 @@ func (asc *APIserverClient) GetRegions() ([]dto.Region, error) {
 	}
 	return regions, nil
 }
-func (asc *APIserverClient) FireRequest(method, url, token string, payload []byte) (*http.Response, error) {
+func (asc *APIserverClient) FireRequest(method, url string, payload []byte) (*http.Response, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, strings.NewReader(string(payload)))
-
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", asc.token.ST)
+	req.Header.Add("Authorization", asc.getSessionToken())
 
 	res, err := client.Do(req)
 	if res.StatusCode >= 400 && res.StatusCode < 500 {
-		body, _ := io.ReadAll(res.Body) // Read response body for logging
+		body, _ := io.ReadAll(res.Body)
 		log.Printf("HTTP %d: %s - Response: %s", res.StatusCode, http.StatusText(res.StatusCode), string(body))
-		asc.RenewToken()
-		req.Header.Add("Authorization", asc.token.ST)
+
+		err = asc.RenewToken()
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Authorization", asc.getSessionToken())
 		res, err = client.Do(req)
 	}
 
