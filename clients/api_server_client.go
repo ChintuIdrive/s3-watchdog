@@ -10,14 +10,17 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
-	get_datacenters = "api/admin/view_storage/get_datacenters"
-	get_credential  = "api/admin/update_user/storage/debug_credentials"
-	server_details  = "api/admin/view_storage/server_details"
-	login           = "api/admin/login"
-	renewToken      = "api/session/admin/renew"
+	get_datacenters      = "api/admin/view_storage/get_datacenters"
+	get_credential       = "api/admin/update_user/storage/debug_credentials"
+	server_details       = "api/admin/view_storage/server_details"
+	login                = "api/admin/login"
+	renewToken           = "api/session/admin/renew"
+	tokenRefreshInterval = 15 * time.Minute
+	credentialTTL        = 15 * time.Minute
 )
 
 type APIserverClient struct {
@@ -25,17 +28,71 @@ type APIserverClient struct {
 	login           dto.Login
 	token           dto.Token
 	tokenMutex      sync.RWMutex
-	credCache       map[string]dto.Cred
+	credCache       map[string]cachedCred
 	credMutex       sync.RWMutex
 }
 
+// New type to store credential with its timestamp
+type cachedCred struct {
+	cred      dto.Cred
+	timestamp time.Time
+}
+
 func NewApiServerClient(config *conf.Config) *APIserverClient {
-	return &APIserverClient{
+	client := &APIserverClient{
 		apiserverConfig: config.ApiServerConfig,
 		login:           config.Login,
 		tokenMutex:      sync.RWMutex{},
-		credCache:       make(map[string]dto.Cred),
+		credCache:       make(map[string]cachedCred),
 		credMutex:       sync.RWMutex{},
+	}
+
+	// Initial login to get the first token
+	err := client.Login()
+	if err != nil {
+		log.Printf("Initial login failed: %v", err)
+	}
+
+	// Start credential cleanup goroutine
+	go client.startCredentialCleanup()
+
+	// Start token refresh goroutine
+	go client.startTokenRefresh()
+
+	return client
+}
+
+func (asc *APIserverClient) startCredentialCleanup() {
+	ticker := time.NewTicker(credentialTTL)
+	for range ticker.C {
+		asc.cleanupExpiredCredentials()
+	}
+}
+
+func (asc *APIserverClient) cleanupExpiredCredentials() {
+	asc.credMutex.Lock()
+	defer asc.credMutex.Unlock()
+
+	now := time.Now()
+	for dns, cached := range asc.credCache {
+		if now.Sub(cached.timestamp) >= credentialTTL {
+			delete(asc.credCache, dns)
+		}
+	}
+}
+
+func (asc *APIserverClient) startTokenRefresh() {
+	ticker := time.NewTicker(tokenRefreshInterval)
+	for range ticker.C {
+		err := asc.RenewToken()
+		if err != nil {
+			log.Printf("Token refresh failed: %v", err)
+			// If token renewal fails, try logging in again
+			err = asc.Login()
+			if err != nil {
+				log.Printf("Re-login failed: %v", err)
+			}
+		}
 	}
 }
 
@@ -188,15 +245,18 @@ func (asc *APIserverClient) GetTenatsListFromApiServer() ([]dto.Tenant, error) {
 }
 
 func (asc *APIserverClient) GetCredential(user dto.User) (dto.Cred, error) {
-	var cred dto.Cred
+	// Try to get credentials from cache first
 	asc.credMutex.RLock()
-	cred, exists := asc.credCache[user.StorageDNS]
+	if cached, exists := asc.credCache[user.StorageDNS]; exists {
+		// Check if credentials are still valid
+		if time.Since(cached.timestamp) < credentialTTL {
+			asc.credMutex.RUnlock()
+			return cached.cred, nil
+		}
+	}
 	asc.credMutex.RUnlock()
 
-	if exists {
-		return cred, nil
-	}
-
+	// If not in cache or expired, fetch from API
 	url := fmt.Sprintf("https://%s/%s", asc.apiserverConfig.APIServerDNS, get_credential)
 	method := "POST"
 	credReq := dto.CredReq{
@@ -205,11 +265,11 @@ func (asc *APIserverClient) GetCredential(user dto.User) (dto.Cred, error) {
 	}
 	payload, err := json.Marshal(credReq)
 	if err != nil {
-		return cred, err
+		return dto.Cred{}, err
 	}
 	res, err := asc.FireRequest(method, url, payload)
 	if err != nil {
-		return cred, err
+		return dto.Cred{}, err
 	}
 
 	defer res.Body.Close()
@@ -217,20 +277,24 @@ func (asc *APIserverClient) GetCredential(user dto.User) (dto.Cred, error) {
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		log.Println(err)
-		return cred, err
+		return dto.Cred{}, err
 	}
 	var credResp dto.CredentialResponse
 
 	err = json.Unmarshal(body, &credResp)
 	if err != nil {
-		return cred, err
+		return dto.Cred{}, err
 	}
 
-	cred = credResp.Data
+	// Store credentials in cache with current timestamp
 	asc.credMutex.Lock()
-	asc.credCache[user.StorageDNS] = cred
+	asc.credCache[user.StorageDNS] = cachedCred{
+		cred:      credResp.Data,
+		timestamp: time.Now(),
+	}
 	asc.credMutex.Unlock()
-	return cred, nil
+
+	return credResp.Data, nil
 }
 
 func (asc *APIserverClient) GetNodeDetails(node string) ([]dto.User, error) {
