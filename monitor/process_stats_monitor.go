@@ -37,7 +37,14 @@ func (ssm *S3StatsMonitor) MonitorTenantsS3Stats(node string) {
 			continue
 		}
 		for _, user := range users {
-			ssm.processUser(user, node)
+
+			cred, err := ssm.apiServerClient.GetCredential(user)
+			if err != nil {
+				//notify watchdog not able to fetch tenantlist from api server
+				log.Printf("Failed to fetch credential list from storage node: %v", err)
+				return
+			}
+			ssm.processUser(user.StorageDNS, node, cred)
 		}
 		interval := time.Duration(ssm.config.MonitorInterval) * time.Minute
 		log.Printf("%s wait for %s before fetching s3-metrics ", node, interval.String())
@@ -48,32 +55,26 @@ func (ssm *S3StatsMonitor) MonitorTenantsS3Stats(node string) {
 
 }
 
-func (ssm *S3StatsMonitor) processUser(user dto.User, node string) {
+func (ssm *S3StatsMonitor) processUser(dns, node string, cred dto.Cred) {
 	var s3metric *collector.S3Metrics
 	var err error
 	var exist bool
-	cred, err := ssm.apiServerClient.GetCredential(user)
-	if err != nil {
-		//notify watchdog not able to fetch tenantlist from api server
-		log.Printf("Failed to fetch credential list from storage node: %v", err)
-		return
-	}
 
-	exist, s3metric = ssm.IsMetricAvailable(node, user.StorageDNS)
+	exist, s3metric = ssm.IsMetricAvailable(node, dns)
 	if exist {
 		ssm.s3MetricsCollector.UpdateMetricValue(s3metric, cred)
 	} else {
-		s3metric, err = ssm.s3MetricsCollector.CollectS3Metrics(user.StorageDNS, cred)
+		s3metric, err = ssm.s3MetricsCollector.CollectS3Metrics(dns, cred)
 		if err != nil {
 			//Notify it why it is not able to get the s3 metics
-			log.Printf("Failed to collect S3 metrics for tenant %s: %v", user.StorageDNS, err)
+			log.Printf("Failed to collect S3 metrics for tenant %s: %v", dns, err)
 			return
 		}
 		s3metrics := ssm.nodeUserMap[node]
 		ssm.nodeUserMap[node] = append(s3metrics, s3metric)
 	}
 
-	ssm.checkS3stats(node, user.StorageDNS, s3metric)
+	ssm.checkS3stats(node, dns, s3metric)
 
 }
 

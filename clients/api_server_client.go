@@ -25,6 +25,8 @@ type APIserverClient struct {
 	login           dto.Login
 	token           dto.Token
 	tokenMutex      sync.RWMutex
+	credCache       map[string]dto.Cred
+	credMutex       sync.RWMutex
 }
 
 func NewApiServerClient(config *conf.Config) *APIserverClient {
@@ -32,6 +34,8 @@ func NewApiServerClient(config *conf.Config) *APIserverClient {
 		apiserverConfig: config.ApiServerConfig,
 		login:           config.Login,
 		tokenMutex:      sync.RWMutex{},
+		credCache:       make(map[string]dto.Cred),
+		credMutex:       sync.RWMutex{},
 	}
 }
 
@@ -184,7 +188,15 @@ func (asc *APIserverClient) GetTenatsListFromApiServer() ([]dto.Tenant, error) {
 }
 
 func (asc *APIserverClient) GetCredential(user dto.User) (dto.Cred, error) {
-	cred := dto.Cred{}
+	var cred dto.Cred
+	asc.credMutex.RLock()
+	cred, exists := asc.credCache[user.StorageDNS]
+	asc.credMutex.RUnlock()
+
+	if exists {
+		return cred, nil
+	}
+
 	url := fmt.Sprintf("https://%s/%s", asc.apiserverConfig.APIServerDNS, get_credential)
 	method := "POST"
 	credReq := dto.CredReq{
@@ -212,9 +224,12 @@ func (asc *APIserverClient) GetCredential(user dto.User) (dto.Cred, error) {
 	err = json.Unmarshal(body, &credResp)
 	if err != nil {
 		return cred, err
-	} else {
-		cred = credResp.Data
 	}
+
+	cred = credResp.Data
+	asc.credMutex.Lock()
+	asc.credCache[user.StorageDNS] = cred
+	asc.credMutex.Unlock()
 	return cred, nil
 }
 
