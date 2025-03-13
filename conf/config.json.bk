@@ -1,0 +1,39 @@
+{
+    "log-file-path": "watchdog.log",
+    "metrics":{
+      "cpu-metrics":[],
+      "ram-metrics":[],
+      "disk-metrics":[]
+    },
+    "api-server-config":{
+      "node-id": "nc1",
+      "api-port": ":8080",
+      "api-server-key": "E8AA3FBB0F512B32",
+      "api-server-dns":"e2-api.edgedrive.com",
+      "tenant-list-api":"api/tenant/list"
+    },
+
+   "controller-config":{
+    "access-keys-dir":"access-keys",
+      "controller-dns": "localhost:44344",
+      "add-service-account-api": "admin/v1/add_service_account",
+      "get-tenant-info-api": "admin/v1/get_tenant_info"
+  },
+  
+  "tenant-process-name":"minio",
+  "monitored-processes": [
+    "e2_node_controller_service",
+    "trash-cleaner-service",
+    "rclone",
+    "kes",
+    "vault",
+    "load-simulator"
+  ],
+  "monitored-disks": [
+    "/",
+    "/data1",
+    "/data2",
+    "/data3",
+    "/data4"
+  ]
+  }

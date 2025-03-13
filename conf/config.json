@@ -1,0 +1,36 @@
+{
+  "region": "Oregon",
+  "log-file-path": "watchdog.log",
+  "api-server-config": {
+    "node-id": "nc1",
+    "api-port": ":8080",
+    "api-server-key": "E8AA3FBB0F512B32",
+    "api-server-dns": "e2-api.edgedrive.com",
+    "tenant-list-api": "api/tenant/list",
+    "notify": ""
+  },
+  "controller-config": {
+    "access-keys-dir": "access-keys",
+    "controller-dns": "localhost:44344",
+    "add-service-account-api": "admin/v1/add_service_account",
+    "get-tenant-info-api": "admin/v1/get_tenant_info"
+  },
+  "bucket-listing-threshold": {
+    "limit": 1,
+    "high_load_duration": 1
+  },
+  "object-listing-threshold": {
+    "limit": 1,
+    "high_load_duration": 1
+  },
+  "selector": {
+    "bucket-selector": 1,
+    "page-selector": 1
+  },
+  "monitor-interval": 1,
+  "login": {
+    "email": "admin@idrive.com",
+    "password": "ODdkOWJiNDAwYzA2MzQ2OTFmMGUzYmFhZjFlMmZkMGQ=",
+    "recaptcha": "sdd"
+  }
+}

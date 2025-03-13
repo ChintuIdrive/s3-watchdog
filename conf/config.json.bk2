@@ -1,0 +1,102 @@
+{
+  "log-file-path": "watchdog.log",
+  "tenant-process-name": "minio",
+  "monitored-processes": [
+    "e2_node_controller_service",
+    "trash-cleaner-service",
+    "rclone",
+    "kes",
+    "vault",
+    "load-simulator"
+  ],
+  "monitored-disks": [
+    "/",
+    "/data1",
+    "/data2",
+    "/data3",
+    "/data4"
+  ],
+  "api-server-config": {
+    "node-id": "nc1",
+    "api-port": ":8080",
+    "api-server-key": "E8AA3FBB0F512B32",
+    "api-server-dns": "e2-api.edgedrive.com",
+    "tenant-list-api": "api/tenant/list"
+  },
+  "controller-config": {
+    "access-keys-dir": "access-keys",
+    "controller-dns": "localhost:44344",
+    "add-service-account-api": "admin/v1/add_service_account",
+    "get-tenant-info-api": "admin/v1/get_tenant_info"
+  },
+  "system-metrics": {
+    "resource_metrics": [
+      {
+        "Name": "avg_load1",
+        "Value": 0,
+        "Threshold": {
+          "limit": 2,
+          "duration": 60000000000
+        }
+      },
+      {
+        "Name": "cpu_usage",
+        "Value": 0,
+        "Threshold": {
+          "limit": 90,
+          "duration": 60000000000
+        }
+      },
+      {
+        "Name": "mem_usage",
+        "Value": 0,
+        "Threshold": {
+          "limit": 20,
+          "duration": 60000000000
+        }
+      },
+      {
+        "Name": "disk_usage",
+        "Value": 0,
+        "Threshold": {
+          "limit": 50,
+          "duration": 60000000000
+        }
+      }
+    ],
+    "io_metrics": [
+      {
+        "Name": "read_bytes",
+        "Value": 0,
+        "Threshold": {
+          "limit": 1000000000,
+          "duration": 60000000000
+        }
+      },
+      {
+        "Name": "write_bytes",
+        "Value": 0,
+        "Threshold": {
+          "limit": 1000000000,
+          "duration": 60000000000
+        }
+      },
+      {
+        "Name": "read_count",
+        "Value": 0,
+        "Threshold": {
+          "limit": 1000,
+          "duration": 60000000000
+        }
+      },
+      {
+        "Name": "write_count",
+        "Value": 0,
+        "Threshold": {
+          "limit": 1000,
+          "duration": 60000000000
+        }
+      }
+    ]
+  }
+}
