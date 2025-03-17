@@ -17,8 +17,10 @@ type Config struct {
 	ObjectListingThreshold *dto.Threshold        `json:"object-listing-threshold"`
 	Selector               *dto.Selector         `json:"selector"`
 	MonitorInterval        int                   `json:"monitor-interval"`
+	SessionTokenInterval   int                   `json:"session-token-interval"`
+	RefreshTokenInterval   int                   `json:"refresh-token-interval"`
+	CredentialTTL          int                   `json:"credential-ttl"`
 	Login                  dto.Login             `json:"login"`
-	//ResourceMetrics    []*MetricConfig   `json:"metric-threshold-map"`
 }
 
 func LoadConfig(filePath string) (*Config, error) {
@@ -73,7 +75,10 @@ func GetDefaultConfig() *Config {
 			BucketSelector: 1,
 			PageSelector:   1,
 		},
-		MonitorInterval: 5,
+		MonitorInterval:      5,
+		SessionTokenInterval: 5,
+		RefreshTokenInterval: 5,
+		CredentialTTL:        5,
 	}
 }
 

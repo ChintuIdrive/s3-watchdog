@@ -120,4 +120,5 @@ type RenewResponse struct {
 	RespCode int    `json:"resp_code"`
 	RespMsg  string `json:"resp_msg"`
 	ST       string `json:"st"`
+	RT       string `json:"rt"`
 }
