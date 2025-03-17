@@ -19,16 +19,16 @@ const (
 	server_details       = "api/admin/view_storage/server_details"
 	login                = "api/admin/login"
 	renewToken           = "api/session/admin/renew"
-	tokenRefreshInterval = 15 * time.Minute
-	credentialTTL        = 15 * time.Minute
+	tokenRefreshInterval = 5 * time.Minute
+	credentialTTL        = 5 * time.Minute
 )
 
 type APIserverClient struct {
 	apiserverConfig *dto.ApiServerConfig
 	login           dto.Login
-	token           dto.Token
+	token           *dto.Token
 	tokenMutex      sync.RWMutex
-	credCache       map[string]cachedCred
+	credCache       map[string]*cachedCred
 	credMutex       sync.RWMutex
 }
 
@@ -43,7 +43,7 @@ func NewApiServerClient(config *conf.Config) *APIserverClient {
 		apiserverConfig: config.ApiServerConfig,
 		login:           config.Login,
 		tokenMutex:      sync.RWMutex{},
-		credCache:       make(map[string]cachedCred),
+		credCache:       make(map[string]*cachedCred),
 		credMutex:       sync.RWMutex{},
 	}
 
@@ -63,8 +63,10 @@ func NewApiServerClient(config *conf.Config) *APIserverClient {
 }
 
 func (asc *APIserverClient) startCredentialCleanup() {
+	log.Printf("expired credentials cleanup will be started in %s",credentialTTL.String())
 	ticker := time.NewTicker(credentialTTL)
 	for range ticker.C {
+		log.Println("expired credentials cleanup started")
 		asc.cleanupExpiredCredentials()
 	}
 }
@@ -76,15 +78,19 @@ func (asc *APIserverClient) cleanupExpiredCredentials() {
 	now := time.Now()
 	for dns, cached := range asc.credCache {
 		if now.Sub(cached.timestamp) >= credentialTTL {
+			log.Printf("credentials for %s removed",dns)
 			delete(asc.credCache, dns)
 		}
 	}
 }
 
 func (asc *APIserverClient) startTokenRefresh() {
+	log.Printf("token will be refreshed in %s",tokenRefreshInterval.String())
 	ticker := time.NewTicker(tokenRefreshInterval)
 	for range ticker.C {
-		err := asc.RenewToken()
+		//err := asc.RenewToken()
+		err := asc.Login()
+		log.Printf("Token refreshed")
 		if err != nil {
 			log.Printf("Token refresh failed: %v", err)
 			// If token renewal fails, try logging in again
@@ -101,16 +107,17 @@ func (asc *APIserverClient) Notify(payload []byte) {
 	log.Printf("Notification Payload: %s", string(payload))
 }
 
-func (asc *APIserverClient) getToken() dto.Token {
+func (asc *APIserverClient) getToken() *dto.Token {
 	asc.tokenMutex.RLock()
 	defer asc.tokenMutex.RUnlock()
 	return asc.token
 }
 
-func (asc *APIserverClient) setToken(token dto.Token) {
+func (asc *APIserverClient) setToken(token *dto.Token) {
 	asc.tokenMutex.Lock()
 	defer asc.tokenMutex.Unlock()
 	asc.token = token
+	log.Printf("new token st: %s \n rt: %s", asc.token.ST,asc.token.RT)
 }
 
 func (asc *APIserverClient) getSessionToken() string {
@@ -203,7 +210,7 @@ func (asc *APIserverClient) Login() error {
 		return err
 	}
 
-	asc.setToken(dto.Token{
+	asc.setToken(&dto.Token{
 		ST:   loginResp.ST,
 		RT:   loginResp.RT,
 		User: loginResp.User,
@@ -251,6 +258,7 @@ func (asc *APIserverClient) GetCredential(user dto.User) (dto.Cred, error) {
 		// Check if credentials are still valid
 		if time.Since(cached.timestamp) < credentialTTL {
 			asc.credMutex.RUnlock()
+			log.Printf("get saved credentials for: %v", user.StorageDNS)
 			return cached.cred, nil
 		}
 	}
@@ -288,12 +296,12 @@ func (asc *APIserverClient) GetCredential(user dto.User) (dto.Cred, error) {
 
 	// Store credentials in cache with current timestamp
 	asc.credMutex.Lock()
-	asc.credCache[user.StorageDNS] = cachedCred{
+	asc.credCache[user.StorageDNS] = &cachedCred{
 		cred:      credResp.Data,
 		timestamp: time.Now(),
 	}
 	asc.credMutex.Unlock()
-
+	log.Printf("saved new credentials for: %v", user.StorageDNS)
 	return credResp.Data, nil
 }
 

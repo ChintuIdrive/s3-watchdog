@@ -33,6 +33,9 @@ func StartMonitor(config *conf.Config) {
 			for _, node := range nodes {
 				log.Printf("Starting S3 monitoring for node: %s", node)
 				go s3monitor.MonitorTenantsS3Stats(node)
+				// if(node=="or1"){
+					
+				// }
 				// wg.Add(1) // Increase wait group counter
 				// go func(n string) {
 				// 	defer wg.Done()

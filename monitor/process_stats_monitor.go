@@ -42,7 +42,7 @@ func (ssm *S3StatsMonitor) MonitorTenantsS3Stats(node string) {
 			if err != nil {
 				//notify watchdog not able to fetch tenantlist from api server
 				log.Printf("Failed to fetch credential list from storage node: %v", err)
-				return
+				continue
 			}
 			ssm.processUser(user.StorageDNS, node, cred)
 		}

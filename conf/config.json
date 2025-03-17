@@ -27,7 +27,10 @@
     "bucket-selector": 1,
     "page-selector": 1
   },
-  "monitor-interval": 1,
+  "monitor-interval": 3,
+  "refresh-token-interval":5,
+  "session-token-interval":5,
+  "credentialTTL" :5 ,
   "login": {
     "email": "admin@idrive.com",
     "password": "ODdkOWJiNDAwYzA2MzQ2OTFmMGUzYmFhZjFlMmZkMGQ=",
