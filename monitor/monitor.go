@@ -12,11 +12,11 @@ import (
 
 func StartMonitor(config *conf.Config) {
 	asc := clients.NewApiServerClient(config)
-	err := asc.Login()
-	if err != nil {
-		log.Printf("Failed to log in to api server: %v", err)
-		return
-	}
+	//err := asc.Login()
+	// if err != nil {
+	// 	log.Printf("Failed to log in to api server: %v", err)
+	// 	return
+	// }
 	s3mc := collector.NewS3MetricCollector(config)
 	s3monitor := NewS3StatsMonitor(config, s3mc, asc)
 	regions, err := asc.GetRegions()
@@ -34,7 +34,7 @@ func StartMonitor(config *conf.Config) {
 				log.Printf("Starting S3 monitoring for node: %s", node)
 				go s3monitor.MonitorTenantsS3Stats(node)
 				// if(node=="or1"){
-					
+
 				// }
 				// wg.Add(1) // Increase wait group counter
 				// go func(n string) {

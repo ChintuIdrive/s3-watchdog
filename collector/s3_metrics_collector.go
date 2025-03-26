@@ -46,7 +46,7 @@ func (s3mc *S3MetricCollector) CollectS3Metrics(dns string, cred dto.Cred) (*S3M
 			Name:             "bucket-listing",
 			Value:            duration,
 			Threshold:        time.Duration(s3mc.config.BucketListingThreshold.Limit) * time.Millisecond,
-			HighLoadDuration: time.Duration(s3mc.config.BucketListingThreshold.HighLoadDuration) * time.Minute,
+			HighLoadDuration: s3mc.config.BucketListingThreshold.HighLoadDuration,
 		},
 		ObjectMetricsMap: make(map[string]ObjectMetrics),
 	}
@@ -74,8 +74,8 @@ func (s3mc *S3MetricCollector) CollectS3Metrics(dns string, cred dto.Cred) (*S3M
 			ObjecttListingMetric: &dto.Metric[time.Duration]{
 				Name:             "object-listing",
 				Value:            duration,
-				Threshold:        time.Duration(s3mc.config.ObjectListingThreshold.Limit) * time.Second,
-				HighLoadDuration: time.Duration(s3mc.config.ObjectListingThreshold.HighLoadDuration) * time.Minute,
+				Threshold:        time.Duration(s3mc.config.ObjectListingThreshold.Limit) * time.Millisecond,
+				HighLoadDuration: s3mc.config.ObjectListingThreshold.HighLoadDuration,
 				LastAlertTime:    time.Time{},
 			},
 		}
@@ -113,8 +113,8 @@ func (s3mc *S3MetricCollector) UpdateMetricValue(metric *S3Metrics, cred dto.Cre
 				ObjecttListingMetric: &dto.Metric[time.Duration]{
 					Name:             "object-listing",
 					Value:            duration,
-					Threshold:        time.Duration(s3mc.config.ObjectListingThreshold.Limit) * time.Second,
-					HighLoadDuration: time.Duration(s3mc.config.ObjectListingThreshold.HighLoadDuration) * time.Minute,
+					Threshold:        time.Duration(s3mc.config.ObjectListingThreshold.Limit) * time.Millisecond,
+					HighLoadDuration: s3mc.config.ObjectListingThreshold.HighLoadDuration,
 					LastAlertTime:    time.Time{},
 				},
 			}

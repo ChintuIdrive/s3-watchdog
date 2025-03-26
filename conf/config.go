@@ -65,11 +65,11 @@ func GetDefaultConfig() *Config {
 		},
 		BucketListingThreshold: &dto.Threshold{
 			Limit:            5,
-			HighLoadDuration: 5,
+			HighLoadDuration: "5m",
 		},
 		ObjectListingThreshold: &dto.Threshold{
 			Limit:            5,
-			HighLoadDuration: 5,
+			HighLoadDuration: "5m",
 		},
 		Selector: &dto.Selector{
 			BucketSelector: 1,

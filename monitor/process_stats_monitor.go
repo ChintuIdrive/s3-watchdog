@@ -7,6 +7,7 @@ import (
 	"ChintuIdrive/s3-watchdog/conf"
 	"ChintuIdrive/s3-watchdog/dto"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 )
@@ -37,14 +38,17 @@ func (ssm *S3StatsMonitor) MonitorTenantsS3Stats(node string) {
 			continue
 		}
 		for _, user := range users {
-
-			cred, err := ssm.apiServerClient.GetCredential(user)
-			if err != nil {
-				//notify watchdog not able to fetch tenantlist from api server
-				log.Printf("Failed to fetch credential list from storage node: %v", err)
-				continue
+			email := fmt.Sprintf("support.inbox+%s@idrivee2.com", node)
+			if user.Email == email {
+				cred, err := ssm.apiServerClient.GetCredential(user)
+				if err != nil {
+					//notify watchdog not able to fetch tenantlist from api server
+					log.Printf("Failed to fetch credential list from storage node: %v", err)
+					continue
+				}
+				ssm.processUser(user.StorageDNS, node, cred)
+				break
 			}
-			ssm.processUser(user.StorageDNS, node, cred)
 		}
 		interval := time.Duration(ssm.config.MonitorInterval) * time.Minute
 		log.Printf("%s wait for %s before fetching s3-metrics ", node, interval.String())
@@ -80,9 +84,14 @@ func (ssm *S3StatsMonitor) processUser(dns, node string, cred dto.Cred) {
 
 func (psm *S3StatsMonitor) checkS3stats(node, dns string, s3metric *collector.S3Metrics) {
 
+	log.Printf("[%s-%s:INFO] check s3 metrics", node, dns)
+	bm := s3metric.BucketListingMetric
 	notify, msg := s3metric.BucketListingMetric.MonitorThresholdWithDuration()
 	if notify {
+		log.Printf("[%s-%s-%s:HIgh] threshold: %v value: %v for %v!", node, dns, bm.Name, bm.Threshold, bm.Value, bm.HighLoadDuration)
 		psm.NotifyS3Stats(node, dns, msg, s3metric.BucketListingMetric)
+	} else {
+		log.Printf("[%s-%s-%s:INFO] threshold: %v value: %v HighloadDuration: %v!", node, dns, bm.Name, bm.Threshold, bm.Value, bm.HighLoadDuration)
 	}
 
 	for _, objMetric := range s3metric.ObjectMetricsMap {
@@ -125,4 +134,16 @@ func (ssm *S3StatsMonitor) IsMetricAvailable(node, dns string) (bool, *collector
 		}
 	}
 	return false, nil
+}
+func ConvertDurationMetricToString(metric *dto.Metric[time.Duration]) *dto.Metric[string] {
+	if metric == nil {
+		return nil
+	}
+
+	return &dto.Metric[string]{
+		Name:             metric.Name,
+		Value:            metric.Value.String(),     // Convert time.Duration to string
+		Threshold:        metric.Threshold.String(), // Convert time.Duration to string
+		HighLoadDuration: metric.HighLoadDuration,   // Convert time.Duration to string
+	}
 }

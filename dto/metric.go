@@ -10,11 +10,11 @@ import (
 )
 
 type Metric[T constraints.Ordered] struct {
-	Name             string        `json:"name"`
-	Value            T             `json:"value"`              // Current value of the metric
-	Threshold        T             `json:"threshold"`          // Maximum allowed value before an alert
-	HighLoadDuration time.Duration `json:"high_load_duration"` //Represents how long the value has been above the threshold
-	LastAlertTime    time.Time     `json:"-"`                  // Time of the last alert
+	Name             string    `json:"name"`
+	Value            T         `json:"value"`              // Current value of the metric
+	Threshold        T         `json:"threshold"`          // Maximum allowed value before an alert
+	HighLoadDuration string    `json:"high_load_duration"` //Represents how long the value has been above the threshold
+	LastAlertTime    time.Time `json:"-"`                  // Time of the last alert
 	//DNS              string        `json:"dsn"`
 }
 
@@ -41,7 +41,7 @@ var (
 	alertLock sync.Mutex
 )
 
-func NewMetric[T constraints.Ordered](name string, threshold T, highLoadDuration time.Duration) *Metric[T] {
+func NewMetric[T constraints.Ordered](name string, threshold T, highLoadDuration string) *Metric[T] {
 	return &Metric[T]{
 		Name:             name,
 		Threshold:        threshold,
@@ -52,13 +52,18 @@ func NewMetric[T constraints.Ordered](name string, threshold T, highLoadDuration
 func (m *Metric[T]) MonitorThresholdWithDuration() (bool, string) {
 	alertLock.Lock()
 	defer alertLock.Unlock()
-
+	// Convert string to time.Duration
+	highloadDuration, err := time.ParseDuration(m.HighLoadDuration)
+	if err != nil {
+		log.Println("Error parsing duration:", err)
+		highloadDuration = 2 * time.Minute
+	}
 	now := time.Now()
 	if m.Value > m.Threshold {
 		if m.LastAlertTime.IsZero() {
 			m.LastAlertTime = now // Start tracking high metric usage time
-		} else if now.Sub(m.LastAlertTime) >= m.HighLoadDuration {
-			alertMessage := fmt.Sprintf("[ALERT] High %s: %v for %v!", m.Name, m.Value, m.HighLoadDuration)
+		} else if now.Sub(m.LastAlertTime) >= time.Duration(highloadDuration)*time.Minute {
+			alertMessage := fmt.Sprintf("[ALERT] High %s: %v for %v!", m.Name, m.Value, highloadDuration)
 			log.Println(alertMessage)
 			m.LastAlertTime = time.Time{} // Reset timer after alert
 			return true, alertMessage
@@ -74,7 +79,7 @@ func (m *Metric[T]) MonitorImmediateThreshold(disk string) (bool, string) {
 	defer alertLock.Unlock()
 
 	now := time.Now()
-	if m.Value > m.Threshold && now.Sub(m.LastAlertTime) > m.HighLoadDuration {
+	if m.Value > m.Threshold {
 		alertMessage := fmt.Sprintf("[ALERT] High %s on disk %s: %v", m.Name, disk, m.Value)
 		log.Println(alertMessage)
 		m.LastAlertTime = now
@@ -158,6 +163,6 @@ type SystemMetrics struct {
 // }
 
 type Threshold struct {
-	Limit            int `json:"limit"`
-	HighLoadDuration int `json:"high_load_duration"`
+	Limit            int    `json:"limit"`
+	HighLoadDuration string `json:"high_load_duration"`
 }

@@ -47,9 +47,9 @@ func NewApiServerClient(config *conf.Config) *APIserverClient {
 		tokenMutex:           sync.RWMutex{},
 		credCache:            make(map[string]*cachedCred),
 		credMutex:            sync.RWMutex{},
-		sessionTokenInterval: time.Duration(config.SessionTokenInterval) * time.Second,
-		refreshTokenInterval: time.Duration(config.RefreshTokenInterval) * time.Second,
-		credentialTTL:        time.Duration(config.CredentialTTL) * time.Second,
+		sessionTokenInterval: time.Duration(config.SessionTokenInterval) * time.Minute,
+		refreshTokenInterval: time.Duration(config.RefreshTokenInterval) * time.Minute,
+		credentialTTL:        time.Duration(config.CredentialTTL) * time.Minute,
 	}
 
 	// Initial login to get the first token
@@ -94,7 +94,7 @@ func (asc *APIserverClient) startSessionTokenTimer() {
 	log.Printf("session token will be renewed in %s", asc.sessionTokenInterval.String())
 	ticker := time.NewTicker(asc.sessionTokenInterval)
 	for range ticker.C {
-		err := asc.RenewSessionToken()
+		err := asc.Login()
 		if err != nil {
 			log.Printf("Session token renewal failed: %v", err)
 			// If token renewal fails, try logging in again

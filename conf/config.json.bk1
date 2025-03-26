@@ -16,21 +16,21 @@
     "get-tenant-info-api": "admin/v1/get_tenant_info"
   },
   "bucket-listing-threshold": {
-    "limit": 100,
-    "high_load_duration": 2
+    "limit": 1,
+    "high_load_duration": 1
   },
   "object-listing-threshold": {
-    "limit": 100,
-    "high_load_duration": 2
+    "limit": 1,
+    "high_load_duration": 1
   },
   "selector": {
     "bucket-selector": 1,
     "page-selector": 1
   },
-  "monitor-interval": 1,
-  "session-token-interval": 14,
-  "refresh-token-interval": 5,
-  "credential-ttl": 5,
+  "monitor-interval": 3,
+  "refresh-token-interval":5,
+  "session-token-interval":5,
+  "credentialTTL" :5 ,
   "login": {
     "email": "admin@idrive.com",
     "password": "ODdkOWJiNDAwYzA2MzQ2OTFmMGUzYmFhZjFlMmZkMGQ=",
