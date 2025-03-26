@@ -67,9 +67,9 @@ type User struct {
 }
 
 type UserListResponse struct {
-	RespCode    int    `json:"resp_code"`
-	RespMsg     string `json:"resp_msg"`
-	NodeDetails []User `json:"node_details"`
+	RespCode    int     `json:"resp_code"`
+	RespMsg     string  `json:"resp_msg"`
+	NodeDetails []*User `json:"node_details"`
 }
 
 type Region struct {

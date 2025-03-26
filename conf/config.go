@@ -21,6 +21,7 @@ type Config struct {
 	RefreshTokenInterval   int                   `json:"refresh-token-interval"`
 	CredentialTTL          int                   `json:"credential-ttl"`
 	Login                  dto.Login             `json:"login"`
+	OnlyTestAccount        bool                  `json:"only-test-account"`
 }
 
 func LoadConfig(filePath string) (*Config, error) {
@@ -79,6 +80,7 @@ func GetDefaultConfig() *Config {
 		SessionTokenInterval: 5,
 		RefreshTokenInterval: 5,
 		CredentialTTL:        5,
+		OnlyTestAccount:      true,
 	}
 }
 

@@ -1,11 +1,16 @@
 package main
 
 import (
+	"ChintuIdrive/s3-watchdog/api"
+	"ChintuIdrive/s3-watchdog/clients"
+	"ChintuIdrive/s3-watchdog/collector"
 	"ChintuIdrive/s3-watchdog/conf"
 	"ChintuIdrive/s3-watchdog/monitor"
 	"encoding/json"
 	"log"
 	"os"
+
+	"github.com/gin-gonic/gin"
 )
 
 // Log file setup
@@ -49,6 +54,20 @@ func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
 func main() {
-	log.Println("Hello World")
-	monitor.StartMonitor(config)
+	asc := clients.NewApiServerClient(config)
+	//err := asc.Login()
+	// if err != nil {
+	// 	log.Printf("Failed to log in to api server: %v", err)
+	// 	return
+	// }
+	s3mc := collector.NewS3MetricCollector(config)
+	s3monitor := monitor.NewS3StatsMonitor(config, s3mc, asc)
+	monitor.StartMonitor(config, asc, s3monitor)
+
+	handler := api.NewHandler(s3monitor)
+
+	router := gin.Default()
+	router.POST("/api/s3-monitor/getStats", handler.GetS3Metric)
+	router.Run(":8786")
+
 }

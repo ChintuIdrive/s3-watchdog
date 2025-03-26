@@ -300,7 +300,7 @@ func (asc *APIserverClient) GetTenatsListFromApiServer() ([]dto.Tenant, error) {
 
 }
 
-func (asc *APIserverClient) GetCredential(user dto.User) (dto.Cred, error) {
+func (asc *APIserverClient) GetCredential(user *dto.User) (dto.Cred, error) {
 	// Try to get credentials from cache first
 	asc.credMutex.RLock()
 	if cached, exists := asc.credCache[user.StorageDNS]; exists {
@@ -354,8 +354,8 @@ func (asc *APIserverClient) GetCredential(user dto.User) (dto.Cred, error) {
 	return credResp.Data, nil
 }
 
-func (asc *APIserverClient) GetNodeDetails(node string) ([]dto.User, error) {
-	var users []dto.User
+func (asc *APIserverClient) GetNodeDetails(node string) ([]*dto.User, error) {
+	var users []*dto.User
 	url := fmt.Sprintf("https://%s/%s", asc.apiserverConfig.APIServerDNS, server_details)
 	method := "POST"
 	payload := []byte(fmt.Sprintf(`{"sn_id":"%s"}`, node))

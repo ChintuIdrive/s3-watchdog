@@ -31,6 +31,7 @@
   "session-token-interval": 14,
   "refresh-token-interval": 5,
   "credential-ttl": 5,
+  "only-test-account":true,
   "login": {
     "email": "admin@idrive.com",
     "password": "ODdkOWJiNDAwYzA2MzQ2OTFmMGUzYmFhZjFlMmZkMGQ=",
