@@ -62,8 +62,8 @@ func (m *Metric[T]) MonitorThresholdWithDuration() (bool, string) {
 	if m.Value > m.Threshold {
 		if m.LastAlertTime.IsZero() {
 			m.LastAlertTime = now // Start tracking high metric usage time
-		} else if now.Sub(m.LastAlertTime) >= time.Duration(highloadDuration)*time.Minute {
-			alertMessage := fmt.Sprintf("[ALERT] High %s: %v for %v!", m.Name, m.Value, highloadDuration)
+		} else if now.Sub(m.LastAlertTime) >= highloadDuration {
+			alertMessage := fmt.Sprintf("[ALERT] High %s: %v is greater than %v for %v!", m.Name, m.Value, m.Threshold, highloadDuration)
 			log.Println(alertMessage)
 			m.LastAlertTime = time.Time{} // Reset timer after alert
 			return true, alertMessage

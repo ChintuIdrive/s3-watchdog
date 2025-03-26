@@ -83,25 +83,25 @@ func (ssm *S3StatsMonitor) processUser(dns, node string, cred dto.Cred) {
 }
 
 func (psm *S3StatsMonitor) checkS3stats(node, dns string, s3metric *collector.S3Metrics) {
-	log.Printf("[%s-%s:INFO] check s3 metrics", node, dns)
-	bm := s3metric.BucketListingMetric
+	log.Printf("[INFO] check s3 metrics for node:%s dns:%s", node, dns)
+	//bm := s3metric.BucketListingMetric
 	notify, msg := s3metric.BucketListingMetric.MonitorThresholdWithDuration()
 	if notify {
-		log.Printf("[%s-%s-%s:HIGH] threshold: %v value: %v for %v!", node, dns, bm.Name, bm.Threshold, bm.Value, bm.HighLoadDuration)
+		//log.Printf("[ALERT] %s-%s-%s High threshold: %v value: %v for %v!", node, dns, bm.Name, bm.Threshold, bm.Value, bm.HighLoadDuration)
 		psm.NotifyS3Stats(node, dns, msg, s3metric.BucketListingMetric)
 	} else {
-		log.Printf("[%s-%s-%s:INFO] threshold: %v value: %v HighloadDuration: %v!", node, dns, bm.Name, bm.Threshold, bm.Value, bm.HighLoadDuration)
+		//log.Printf("[INFO] %s-%s-%s threshold: %v value: %v HighloadDuration: %v!", node, dns, bm.Name, bm.Threshold, bm.Value, bm.HighLoadDuration)
 	}
 
 	for _, objMetric := range s3metric.ObjectMetricsMap {
 		notify, msg := objMetric.ObjecttListingMetric.MonitorThresholdWithDuration()
 		if notify {
-			log.Printf("[%s-%s-%s:HIGH] threshold: %v value: %v for %v!", node, dns, objMetric.ObjecttListingMetric.Name,
-				objMetric.ObjecttListingMetric.Threshold, objMetric.ObjecttListingMetric.Value, objMetric.ObjecttListingMetric.HighLoadDuration)
+			// log.Printf("[ALERT] %s-%s-%s threshold: %v value: %v for %v!", node, dns, objMetric.ObjecttListingMetric.Name,
+			// 	objMetric.ObjecttListingMetric.Threshold, objMetric.ObjecttListingMetric.Value, objMetric.ObjecttListingMetric.HighLoadDuration)
 			psm.NotifyS3Stats(node, dns, msg, objMetric.ObjecttListingMetric)
 		} else {
-			log.Printf("[%s-%s-%s:INFO] threshold: %v value: %v HighloadDuration: %v!", node, dns, objMetric.ObjecttListingMetric.Name,
-				objMetric.ObjecttListingMetric.Threshold, objMetric.ObjecttListingMetric.Value, objMetric.ObjecttListingMetric.HighLoadDuration)
+			//log.Printf("[INFO] %s-%s-%s threshold: %v value: %v HighloadDuration: %v!", node, dns, objMetric.ObjecttListingMetric.Name,
+			//objMetric.ObjecttListingMetric.Threshold, objMetric.ObjecttListingMetric.Value, objMetric.ObjecttListingMetric.HighLoadDuration)
 		}
 	}
 }
