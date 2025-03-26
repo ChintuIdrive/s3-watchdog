@@ -83,12 +83,11 @@ func (ssm *S3StatsMonitor) processUser(dns, node string, cred dto.Cred) {
 }
 
 func (psm *S3StatsMonitor) checkS3stats(node, dns string, s3metric *collector.S3Metrics) {
-
 	log.Printf("[%s-%s:INFO] check s3 metrics", node, dns)
 	bm := s3metric.BucketListingMetric
 	notify, msg := s3metric.BucketListingMetric.MonitorThresholdWithDuration()
 	if notify {
-		log.Printf("[%s-%s-%s:HIgh] threshold: %v value: %v for %v!", node, dns, bm.Name, bm.Threshold, bm.Value, bm.HighLoadDuration)
+		log.Printf("[%s-%s-%s:HIGH] threshold: %v value: %v for %v!", node, dns, bm.Name, bm.Threshold, bm.Value, bm.HighLoadDuration)
 		psm.NotifyS3Stats(node, dns, msg, s3metric.BucketListingMetric)
 	} else {
 		log.Printf("[%s-%s-%s:INFO] threshold: %v value: %v HighloadDuration: %v!", node, dns, bm.Name, bm.Threshold, bm.Value, bm.HighLoadDuration)
@@ -97,19 +96,23 @@ func (psm *S3StatsMonitor) checkS3stats(node, dns string, s3metric *collector.S3
 	for _, objMetric := range s3metric.ObjectMetricsMap {
 		notify, msg := objMetric.ObjecttListingMetric.MonitorThresholdWithDuration()
 		if notify {
+			log.Printf("[%s-%s-%s:HIGH] threshold: %v value: %v for %v!", node, dns, objMetric.ObjecttListingMetric.Name,
+				objMetric.ObjecttListingMetric.Threshold, objMetric.ObjecttListingMetric.Value, objMetric.ObjecttListingMetric.HighLoadDuration)
 			psm.NotifyS3Stats(node, dns, msg, objMetric.ObjecttListingMetric)
+		} else {
+			log.Printf("[%s-%s-%s:INFO] threshold: %v value: %v HighloadDuration: %v!", node, dns, objMetric.ObjecttListingMetric.Name,
+				objMetric.ObjecttListingMetric.Threshold, objMetric.ObjecttListingMetric.Value, objMetric.ObjecttListingMetric.HighLoadDuration)
 		}
 	}
-
 }
 
 func (psm *S3StatsMonitor) NotifyS3Stats(node, dns, msg string, metric *dto.Metric[time.Duration]) {
-
-	s3Not := actions.S3Notification[time.Duration]{
+	stringMetric := ConvertDurationMetricToString(metric)
+	s3Not := actions.S3Notification[string]{
 		Type:      actions.S3Metric,
 		NodeId:    node,
 		TimeStamp: time.Now().Format(time.RFC3339),
-		Metric:    metric,
+		Metric:    stringMetric,
 		Actions:   []actions.Action{actions.Notify},
 		Message:   msg,
 		S3Dns:     dns,

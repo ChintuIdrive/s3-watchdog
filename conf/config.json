@@ -17,11 +17,11 @@
   },
   "bucket-listing-threshold": {
     "limit": 100,
-    "high_load_duration": 2
+    "high_load_duration": "2m"
   },
   "object-listing-threshold": {
     "limit": 100,
-    "high_load_duration": 2
+    "high_load_duration": "2m"
   },
   "selector": {
     "bucket-selector": 1,
